@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: redash
+    volumes:
+      - ./data:/var/lib/postgresql/data/
+    ports:
+      - 5432:5432
+    networks:
+      - my-network
+  redash:
+    image: redash/redash:latest
+    restart: always
+    command: server
+    environment:
+      REDASH_DATABASE_URL: postgres://postgres:postgres@postgres:5432/redash
+      REDASH_ADMIN_USERNAME: admin
+      REDASH_ADMIN_PASSWORD: admin
+      REDASH_SECRET_KEY: 12345
+      REDASH_COOKIE_SECRET: 12345
+      REDASH_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+    ports:
+      - 5000:5000
+    networks:
+      - my-network
+  redash-worker:
+    image: redash/redash:latest
+    restart: always
+    command: worker
+    environment:
+      REDASH_DATABASE_URL: postgres://postgres:postgres@postgres:5432/redash
+      REDASH_ADMIN_USERNAME: admin
+      REDASH_ADMIN_PASSWORD: admin
+      REDASH_SECRET_KEY: 12345
+      REDASH_COOKIE_SECRET: 12345
+      REDASH_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redash
+    networks:
+      - my-network
+  redis:
+    image: redis:6.2-alpine
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    # command: redis-server --save 20 1 --loglevel warning --requirepass eYVX7EwVmmxKPCDmwMtyKVge8oLd2t81
+    volumes: 
+      - ./redis/data:/data
+    networks:
+      - my-network
+networks:
+  my-network:
